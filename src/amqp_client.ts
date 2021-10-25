@@ -1,6 +1,6 @@
 import amqp = require('amqplib/callback_api');
 import { v4 } from 'uuid';
-import { CompileResult } from './messageTypes';
+import { CompileRequest, CompileResult } from './messageTypes';
 
 export default class AmpqClient {
   private channel?: amqp.Channel = undefined;
@@ -43,10 +43,13 @@ export default class AmpqClient {
     });
   }
 
-  requestCompile(callback: (result: CompileResult) => void) {
+  requestCompile(
+    request: CompileRequest,
+    callback: (result: CompileResult) => void
+  ) {
     const uuid = v4();
 
-    this.channel?.sendToQueue('compile', Buffer.from(`${uuid}`), {
+    this.channel?.sendToQueue('compile', Buffer.from(JSON.stringify(request)), {
       correlationId: uuid,
       replyTo: this.queue,
     });
