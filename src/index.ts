@@ -1,8 +1,14 @@
-import { request } from 'express';
 import { createServer } from 'http';
 import AmpqClient from './amqp_client';
+import { createProxyServer } from 'http-proxy';
+import { SessionMap } from './sessionMap';
+import { CompileResultApiResponse } from './messageTypes';
 
 const amqpClient = new AmpqClient();
+
+const proxy = createProxyServer({ ws: true });
+
+const sessionMap = new SessionMap();
 
 createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -32,12 +38,27 @@ createServer((req, res) => {
             code: msg.code as string,
           },
           (result) => {
+            console.log(result);
+
+            let response = {} as CompileResultApiResponse;
+
+            if (
+              result.result === 'success' &&
+              result.session_id &&
+              result.address
+            ) {
+              sessionMap.setAddress(result.session_id, result.address);
+
+              response.result = 'success';
+              response.session_id = result.session_id;
+            } else {
+              response.result = result.result;
+            }
+
             res.writeHead(200, {
               'Content-Type': 'application/json',
             });
-            console.log('result is', result);
-            res.write;
-            res.write(JSON.stringify(result));
+            res.write(JSON.stringify(response));
             res.end();
           }
         );
@@ -49,4 +70,18 @@ createServer((req, res) => {
     res.writeHead(404);
     res.end();
   }
-}).listen(8080);
+})
+  .on('upgrade', (req, socket, head) => {
+    if (req.url && req.url.startsWith('/') && req.url.length > 1) {
+      const sessionId = req.url.substr(1);
+
+      const address = sessionMap.getAddress(sessionId);
+
+      if (address) {
+        proxy.ws(req, socket, head, { target: address });
+
+        sessionMap.removeAddress(sessionId);
+      }
+    }
+  })
+  .listen(8080);
