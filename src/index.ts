@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import AmpqClient from './amqp_client';
+import AmpqClient from './amqpClient';
 import { createProxyServer } from 'http-proxy';
 import { SessionMap } from './sessionMap';
 import { CompileResultApiResponse } from './messageTypes';
