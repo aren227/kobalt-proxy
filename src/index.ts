@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import AmpqClient from './amqpClient';
 import { createProxyServer } from 'http-proxy';
 import { SessionMap } from './sessionMap';
@@ -15,6 +16,12 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '32kb' }));
+app.use(
+  rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 10,
+  })
+);
 
 app.post('/compile', (req, res) => {
   const msg = req.body;
