@@ -32,16 +32,11 @@ app.post('/compile', (req, res) => {
     (result) => {
       console.log(result);
 
-      let response = {} as CompileResultApiResponse;
-
       if (result.result === 'success' && result.session_id && result.address) {
         sessionMap.setAddress(result.session_id, result.address);
-
-        response.result = 'success';
-        response.session_id = result.session_id;
-      } else {
-        response.result = result.result;
       }
+
+      const { address, ...response } = result;
 
       res.json(response);
     }
