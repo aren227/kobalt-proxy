@@ -14,6 +14,7 @@ const sessionMap = new SessionMap();
 const app = express();
 
 app.use(cors());
+app.use(express.json({ limit: '32kb' }));
 
 app.post('/compile', (req, res) => {
   const msg = req.body;
