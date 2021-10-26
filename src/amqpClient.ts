@@ -9,7 +9,7 @@ export default class AmpqClient {
   private pendingRequests: Map<string, (result: CompileResult) => void> =
     new Map();
 
-  constructor(url = 'amqp://localhost') {
+  constructor(url = 'amqp://rabbitmq') {
     this.pendingRequests = new Map();
 
     amqp.connect(url, (err, connection) => {
