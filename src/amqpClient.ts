@@ -1,17 +1,14 @@
 import amqp = require('amqplib/callback_api');
-import { v4 } from 'uuid';
-import { CompileRequest, CompileResult } from './messageTypes';
+import { CompileRequest } from './messageTypes';
+import WebSocketHandler from './websocketHandler';
 
 export default class AmpqClient {
+  private webSocketMap = new Map<any, WebSocketHandler>();
+
   private channel?: amqp.Channel = undefined;
   private queue?: string = undefined;
 
-  private pendingRequests: Map<string, (result: CompileResult) => void> =
-    new Map();
-
   constructor(url = 'amqp://rabbitmq') {
-    this.pendingRequests = new Map();
-
     amqp.connect(url, (err, connection) => {
       if (err) throw err;
 
@@ -27,13 +24,14 @@ export default class AmpqClient {
           channel.consume(
             q.queue,
             (msg: any) => {
-              if (this.pendingRequests.has(msg.properties.correlationId)) {
-                const callback = this.pendingRequests.get(
+              if (this.webSocketMap.has(msg.properties.correlationId)) {
+                const ws = this.webSocketMap.get(
                   msg.properties.correlationId
                 )!!;
-                this.pendingRequests.delete(msg.properties.correlationId);
 
-                callback(JSON.parse(msg.content.toString()));
+                const data = JSON.parse(msg.content.toString());
+
+                ws.handleAmqpMessage(data);
               }
             },
             { noAck: true }
@@ -43,16 +41,29 @@ export default class AmpqClient {
     });
   }
 
-  requestCompile(
-    request: CompileRequest,
-    callback: (result: CompileResult) => void
-  ) {
-    const uuid = v4();
+  requestCompile(from: WebSocketHandler, request: CompileRequest) {
+    this.webSocketMap.set(from.id, from);
 
     this.channel?.sendToQueue('compile', Buffer.from(JSON.stringify(request)), {
-      correlationId: uuid,
+      correlationId: from.id,
       replyTo: this.queue,
     });
-    this.pendingRequests.set(uuid, callback);
+  }
+
+  send(from: WebSocketHandler, targetQueue: string, message: any) {
+    this.channel?.sendToQueue(
+      targetQueue,
+      Buffer.from(JSON.stringify(message)),
+      {
+        correlationId: from.id,
+        replyTo: this.queue,
+      }
+    );
+  }
+
+  webSocketClosed(from: WebSocketHandler, targetQueue: string) {
+    this.send(from, targetQueue, { type: 'closed' });
+
+    this.webSocketMap.delete(from.id);
   }
 }
