@@ -8,8 +8,8 @@ export default class AmpqClient {
   private channel?: amqp.Channel = undefined;
   private queue?: string = undefined;
 
-  constructor(url = 'amqp://rabbitmq') {
-    amqp.connect(url, (err, connection) => {
+  constructor(host: string) {
+    amqp.connect(host, (err, connection) => {
       if (err) throw err;
 
       connection.createChannel((err1, channel) => {
