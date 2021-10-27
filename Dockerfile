@@ -12,4 +12,6 @@ RUN tsc
 
 EXPOSE 8080
 
+ENV NODE_ENV=prod
+
 CMD ["node", "dist/index.js"]
